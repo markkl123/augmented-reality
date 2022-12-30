@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 # ======= helper functions
-def print_image(image, title):
+def print_image(image, title=""):
     plt.figure(figsize=(10,10))
     plt.imshow(image)
     plt.title(title)
@@ -24,7 +24,7 @@ def draw_keypoints(rgb_image, keypoints):
 def find_matches(frame_kp, template_kp):
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(frame_desc, template_desc, k=2)
-    good_and_second_good_match_list = [m for m in matches if m[0].distance/m[1].distance < 0.5]
+    good_and_second_good_match_list = [m for m in matches if m[0].distance/m[1].distance < 1]
     return np.asarray(good_and_second_good_match_list)[:,0]
 
 
@@ -35,7 +35,7 @@ def find_homography(frame_kp, template_kp, good_matches):
 
 
 def warp_images(back, front, H):
-    height, width  = back.shape[:2]
+    height, width = back.shape[:2]
     warped_front = cv2.warpPerspective(front, H, (width, height))
     back[warped_front > 0] = warped_front[warped_front > 0]
     return back
@@ -70,9 +70,10 @@ writer = cv2.VideoWriter(OUTPUT_VIDEO_PATH, codec, fps, (frame_width, frame_heig
 print(f'Processing {num_frames} frames of size {frame_width}x{frame_height}, {num_frames / fps:.2f} seconds, {fps} f/s')
 
 # ========== run on all frames
-for i in range(100):
+for i in range(902):
 
     frame_bgr = capture.read()[1]
+
     frame_gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
     frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
 
@@ -92,7 +93,7 @@ for i in range(100):
     another = cv2.resize(another, (template_width, template_height))
 
     warped = warp_images(frame_bgr, another, H)
-    
+
     # =========== plot and save frame 
     writer.write(warped)
 
