@@ -27,7 +27,7 @@ if __name__ == '__main__':
     capture = cv2.VideoCapture(ORIGINAL_VIDEO_PATH)
 
     fps = int(capture.get(cv2.CAP_PROP_FPS))
-    frame_width  = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     num_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))    
     codec = cv2.VideoWriter_fourcc(*"mp4v")
@@ -56,6 +56,11 @@ if __name__ == '__main__':
         # this is at most 3 lines- 2 of which are really the same
         # HINT: the function from above should give you this almost completely
         best_keypoints = None # TODO
+        frame_coords = [kp.pt for kp in frame_kp]
+        template_coords = [kp.pt for kp in template_kp]
+        transformed_coords = cv2.perspectiveTransform(np.array([frame_coords]), H)[0]
+        best_keypoints = [(frame_kp[i], template_kp[i]) for i, (t_coord, f_coord) in
+                          enumerate(zip(template_coords, transformed_coords)) if np.linalg.norm(t_coord - f_coord) < 10]
 
         # +++++++ solve PnP to get cam pose (r_vec and t_vec)
         # `cv2.solvePnP` is a function that receives:
@@ -71,12 +76,18 @@ if __name__ == '__main__':
         #
         # this part is 2 rows
         r_vec, t_vec = None, None # TODO
+        xyz = np.array(
+            [(kp.pt[0] * TEMPLATE_WIDTH_CM / template_width, kp.pt[1] * TEMPLATE_HEIGHT_CM / template_height, 0) for kp
+             in template_kp])
+        uv = np.array([kp.pt for kp in frame_kp])
+        r_vec, t_vec = cv2.solvePnP(xyz, uv, K, dist_coeffs)[-2:]
 
         # +++++++ draw object with r_vec and t_vec on top of rgb frame
         # We saw how to draw cubes in camera calibration. (copy paste)
         # after this works you can replace this with the draw function from the renderer class renderer.draw() (1 line)
         rendered = None # TODO
 
+        
         # ======= plot and save frame
         writer.write(rendered)
 
