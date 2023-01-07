@@ -23,7 +23,7 @@ class MeshRenderer:
 
         # rotate 180 around x because the Z dir of the reference grid is down
         T = np.eye(4)
-        T[0:3, 0:3] = self.rot_x(np.pi)
+        T[0:3, 0:3] = MeshRenderer.rot_x(np.pi)
         mesh.apply_transform(T)
         # Load the trimesh and put it in a scene
         mesh = pyrender.Mesh.from_trimesh(mesh)

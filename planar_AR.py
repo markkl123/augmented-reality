@@ -21,7 +21,7 @@ def extract_xyz_from_keypoints(keypoints, width, height):
 
 # ======= contants
 RENDERED_VIDEO_PATH = r'Videos\rendered.mp4'
-OBJECT_PATH = r'drill\drill.obj'
+OBJECT_PATH = r'Models\drill\drill.obj'
 
 
 if __name__ == '__main__':
