@@ -62,6 +62,7 @@ if __name__ == '__main__':
 
         frame = capture.read()[1]
         frame = np.flip(np.transpose(frame, (1, 0, 2)), axis=1)
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # ======= find keypoints matches of frame and template
         # we saw this in the SIFT notebook
@@ -100,12 +101,16 @@ if __name__ == '__main__':
                                          K,
                                          dist_coeffs)
 
-        # +++++++ draw object with r_vec and t_vec on top of rgb frame
+        # +++++++ draw cube with r_vec and t_vec on top of rgb frame
         # We saw how to draw cubes in camera calibration. (copy and paste)
+        ''' rendered_rgb = draw_cube(frame_rgb, r_vec, t_vec, K, dist_coeffs) '''
+
+        # +++++++ draw object with r_vec and t_vec on top of rgb frame
         # after this works you can replace this with the draw function from the renderer class renderer.draw() (1 line)
-        rendered = draw_cube(frame, r_vec, t_vec, K, dist_coeffs)
+        rendered_rgb = mesh.draw(frame_rgb, r_vec, t_vec)
 
         # ======= plot and save frame
+        rendered = cv2.cvtColor(rendered_rgb, cv2.COLOR_RGB2BGR)
         writer.write(rendered)
 
         if i % 100 == 0:

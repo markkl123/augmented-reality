@@ -68,14 +68,14 @@ def draw(img, imgpts):
     return img
 
 
-def draw_cube(frame, r_vec, t_vec, K, dist_coeffs):
+def draw_cube(rgb, r_vec, t_vec, K, dist_coeffs):
     object_points = (
             3
             * 2.2
             * np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, -1], [0, 1, -1], [1, 1, -1], [1, 0, -1]])
     )
 
-    undistorted = cv2.undistort(frame, K, dist_coeffs)
+    undistorted = cv2.undistort(rgb, K, dist_coeffs)
     img_pts = cv2.projectPoints(object_points, r_vec, t_vec, K, dist_coeffs)[0]
 
     return draw(undistorted, img_pts)
