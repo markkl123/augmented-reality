@@ -1,11 +1,28 @@
 # ======= imports
+import numpy as np
+
 from perspective_warping import *
 from calibration import *
 import os
+from mesh_renderer import MeshRenderer
+
+
+# ======= helper functions
+def extract_xyz_from_keypoints(keypoints, width, height):
+    TEMPLATE_WIDTH_CM = 21.2
+    TEMPLATE_HEIGHT_CM = 14.1
+
+    return np.array([(
+        kp[0] * TEMPLATE_WIDTH_CM / width,
+        kp[1] * TEMPLATE_HEIGHT_CM / height,
+        0)
+        for kp in keypoints])
 
 
 # ======= contants
 RENDERED_VIDEO_PATH = r'Videos\rendered.mp4'
+OBJECT_PATH = r'drill\drill.obj'
+
 
 if __name__ == '__main__':
 
@@ -15,8 +32,8 @@ if __name__ == '__main__':
 
     with open(CALIB_PARAMETERS_PATH, 'r') as f:
         parameters = json.loads(json.load(f))
-        K = parameters[CAMERA_MATRIX_KEY]
-        dist_coeffs = parameters[DISTORTION_COEFFICIENTS_KEY]
+        K = np.array(parameters[CAMERA_MATRIX_KEY])
+        dist_coeffs = np.array(parameters[DISTORTION_COEFFICIENTS_KEY])
 
     # ======= template image keypoint and descriptors
     template = cv2.imread(TEMPLATE_IMAGE_PATH)
@@ -27,8 +44,8 @@ if __name__ == '__main__':
     capture = cv2.VideoCapture(ORIGINAL_VIDEO_PATH)
 
     fps = int(capture.get(cv2.CAP_PROP_FPS))
-    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_height = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     num_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))    
     codec = cv2.VideoWriter_fourcc(*"mp4v")
     color = True
@@ -36,12 +53,15 @@ if __name__ == '__main__':
 
     writer = cv2.VideoWriter(RENDERED_VIDEO_PATH, codec, fps, (frame_width, frame_height), color)
 
+    mesh = MeshRenderer(K, frame_width, frame_height, OBJECT_PATH)
+
     print(f'Processing {num_frames} frames of size {frame_width}x{frame_height}, {num_frames / fps:.2f} seconds, {fps} f/s')
 
     # ======= run on all frames
     for i in range(num_frames):
 
         frame = capture.read()[1]
+        frame = np.flip(np.transpose(frame, (1, 0, 2)), axis=1)
 
         # ======= find keypoints matches of frame and template
         # we saw this in the SIFT notebook
@@ -50,17 +70,17 @@ if __name__ == '__main__':
 
         # ======= find homography
         # also in SIFT notebook
-        H, masked = find_homography(frame_kp, template_kp, good_matches)
+        (H, masked), good_frame_kp, good_template_kp = find_homography(frame_kp, template_kp, good_matches)
 
         # +++++++ take subset of keypoints that obey homography (both frame and reference)
         # this is at most 3 lines- 2 of which are really the same
         # HINT: the function from above should give you this almost completely
-        best_keypoints = None # TODO
-        frame_coords = [kp.pt for kp in frame_kp]
-        template_coords = [kp.pt for kp in template_kp]
-        transformed_coords = cv2.perspectiveTransform(np.array([frame_coords]), H)[0]
-        best_keypoints = [(frame_kp[i], template_kp[i]) for i, (t_coord, f_coord) in
-                          enumerate(zip(template_coords, transformed_coords)) if np.linalg.norm(t_coord - f_coord) < 10]
+        transformed_points = cv2.perspectiveTransform(np.array([good_frame_kp]), H)[0]
+        best_keypoints = [(good_frame_kp[i], good_template_kp[i])
+                          for i, (t_coord, f_coord) in enumerate(zip(good_template_kp, transformed_points))
+                          if np.linalg.norm(t_coord - f_coord) < 10]
+        frame_points, template_points = zip(*best_keypoints)
+        frame_points, template_points = np.array(frame_points), np.array(template_points)
 
         # +++++++ solve PnP to get cam pose (r_vec and t_vec)
         # `cv2.solvePnP` is a function that receives:
@@ -75,21 +95,21 @@ if __name__ == '__main__':
         # For this we just need the template width and height in cm.
         #
         # this part is 2 rows
-        r_vec, t_vec = None, None # TODO
-        xyz = np.array(
-            [(kp.pt[0] * TEMPLATE_WIDTH_CM / template_width, kp.pt[1] * TEMPLATE_HEIGHT_CM / template_height, 0) for kp
-             in template_kp])
-        uv = np.array([kp.pt for kp in frame_kp])
-        r_vec, t_vec = cv2.solvePnP(xyz, uv, K, dist_coeffs)[-2:]
+        ret, r_vec, t_vec = cv2.solvePnP(extract_xyz_from_keypoints(template_points, template_width, template_height),
+                                         frame_points,
+                                         K,
+                                         dist_coeffs)
 
         # +++++++ draw object with r_vec and t_vec on top of rgb frame
-        # We saw how to draw cubes in camera calibration. (copy paste)
+        # We saw how to draw cubes in camera calibration. (copy and paste)
         # after this works you can replace this with the draw function from the renderer class renderer.draw() (1 line)
-        rendered = None # TODO
+        rendered = draw_cube(frame, r_vec, t_vec, K, dist_coeffs)
 
-        
         # ======= plot and save frame
         writer.write(rendered)
+
+        if i % 100 == 0:
+            print(f'{i}/{num_frames}')
 
     # ======= end all
     capture.release()

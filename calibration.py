@@ -2,6 +2,17 @@
 import cv2
 import numpy as np
 import json
+import math
+
+from perspective_warping import plot_image
+
+
+# ======= contants
+CAMERA_MATRIX_KEY = 'K'
+DISTORTION_COEFFICIENTS_KEY = 'dist_coeffs'
+CALIB_PARAMETERS_PATH = 'calibration_parameters.json'
+SQUARE_SIZE = 2.2
+
 
 # ======= helper functions
 def extract_chessboard_frames():
@@ -11,16 +22,16 @@ def extract_chessboard_frames():
     print(f'Extracting {CHESSBOARD_NUM_FRAMES} chessboard frames')
 
     capture = cv2.VideoCapture(CHESSBOARD_VIDEO_PATH)
+
     num_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    frames = np.array([capture.read()[1] for i in range(num_frames)])
+    frames = np.array([capture.read()[1] for _ in range(num_frames)])
     capture.release()
 
-    return frames[np.arange(num_frames, step=num_frames // CHESSBOARD_NUM_FRAMES)]
+    return frames[np.arange(num_frames, step=math.ceil(num_frames / CHESSBOARD_NUM_FRAMES))]
 
 
 def find_corner_points(chessboard_frames):
-    PATTERN_SIZE = (7, 7) # According to number of internal corners - our board is 8x8 square-wise
-    SQUARE_SIZE = 2.2 # cm
+    PATTERN_SIZE = (7, 7)  # According to number of internal corners - our board is 8x8 square-wise
 
     pattern_points = np.zeros((np.prod(PATTERN_SIZE), 3), np.float32)
     pattern_points[:, :2] = np.indices(PATTERN_SIZE).T.reshape(-1, 2)
@@ -40,10 +51,34 @@ def find_corner_points(chessboard_frames):
 
     return object_points, frame_points
 
-# ======= contants
-CAMERA_MATRIX_KEY = 'K'
-DISTORTION_COEFFICIENTS_KEY = 'dist_coeffs'
-CALIB_PARAMETERS_PATH = 'calibration_parameters.json'
+
+def draw(img, imgpts):
+    imgpts = np.int32(imgpts).reshape(-1, 2)
+
+    # draw ground floor in green
+    img = cv2.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -1)
+
+    # draw pillars in blue color
+    for i, j in zip(range(4), range(4, 8)):
+        img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), 255, 1)
+
+    # draw top layer in red color
+    img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 1)
+
+    return img
+
+
+def draw_cube(frame, r_vec, t_vec, K, dist_coeffs):
+    object_points = (
+            3
+            * 2.2
+            * np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, -1], [0, 1, -1], [1, 1, -1], [1, 0, -1]])
+    )
+
+    undistorted = cv2.undistort(frame, K, dist_coeffs)
+    img_pts = cv2.projectPoints(object_points, r_vec, t_vec, K, dist_coeffs)[0]
+
+    return draw(undistorted, img_pts)
 
 
 def find_calibration_parameters():
@@ -63,6 +98,14 @@ def find_calibration_parameters():
     with open(CALIB_PARAMETERS_PATH, 'w') as f:
         parameters = {CAMERA_MATRIX_KEY: camera_matrix.tolist(), DISTORTION_COEFFICIENTS_KEY: dist_coefs.ravel().tolist()}
         json.dump(json.dumps(parameters), f)
+
+    # ======= check calibration
+    plot_image(draw_cube(chessboard_frames[0], _rvecs[0], _tvecs[0], camera_matrix, dist_coefs))
+
+
+if __name__ == '__main__':
+    find_calibration_parameters()
+
 
 
 

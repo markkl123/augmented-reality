@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
+
 # ======= helper functions
 def plot_image(image, title=""):
     plt.figure(figsize=(10,10))
@@ -17,17 +18,17 @@ def extract_keypoints_and_descriptors(image):
     return feature_extractor.detectAndCompute(gray_image, None)
 
 
-def find_matches(frame_desc, template_desc):
+def find_matches(desc1, desc2):
     bf = cv2.BFMatcher()
-    matches = bf.knnMatch(frame_desc, template_desc, k=2)
+    matches = bf.knnMatch(desc1, desc2, k=2)
     good_and_second_good_match_list = [m for m in matches if m[0].distance/m[1].distance < 1]
-    return np.asarray(good_and_second_good_match_list)[:,0]
+    return np.asarray(good_and_second_good_match_list)[:, 0]
 
 
-def find_homography(frame_kp, template_kp, good_matches):
-    good_frame_kp = np.array([frame_kp[m.queryIdx].pt for m in good_matches])
-    good_template_kp = np.array([template_kp[m.trainIdx].pt for m in good_matches])
-    return cv2.findHomography(good_template_kp, good_frame_kp, cv2.RANSAC, 5.0)
+def find_homography(kp1, kp2, matches):
+    good_kp1 = [kp1[m.queryIdx].pt for m in matches]
+    good_kp2 = [kp2[m.trainIdx].pt for m in matches]
+    return cv2.findHomography(np.array(good_kp1), np.array(good_kp2), cv2.RANSAC, 5.0), good_kp1, good_kp2
 
 
 def warp_images(back, front, H):
@@ -71,14 +72,14 @@ if __name__ == '__main__':
 
         frame = capture.read()[1]
 
-        # ======= find keypoints matches of frame and template
+        # ======= find key points matches of frame and template
         # we saw this in the SIFT notebook
         frame_kp, frame_desc = extract_keypoints_and_descriptors(frame)
         good_matches = find_matches(frame_desc, template_desc)
 
         # ======= find homography
         # also in SIFT notebook
-        H, masked = find_homography(frame_kp, template_kp, good_matches)
+        (H, masked), _, _ = find_homography(frame_kp, template_kp, good_matches)
 
         # +++++++ do warping of another image on template image
         # we saw this in SIFT notebook

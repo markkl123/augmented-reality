@@ -18,7 +18,7 @@ class MeshRenderer:
         mesh.apply_transform(T)
         # rotate to make the drill standup
         T = np.eye(4)
-        T[0:3, 0:3] = self.rot_x(np.pi / 2)
+        T[0:3, 0:3] = MeshRenderer.rot_x(np.pi / 2)
         mesh.apply_transform(T)
 
         # rotate 180 around x because the Z dir of the reference grid is down
@@ -72,7 +72,8 @@ class MeshRenderer:
         img[color[:, :, 3] != 0] = color[:, :, 0:3][color[:, :, 3] != 0]
         return img
 
-    def rot_x(self, t):
+    @staticmethod
+    def rot_x(t):
         ct = np.cos(t)
         st = np.sin(t)
         m = np.array([[1, 0, 0], [0, ct, -st], [0, st, ct]])
