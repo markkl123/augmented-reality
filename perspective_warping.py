@@ -26,8 +26,8 @@ def find_matches(desc1, desc2):
 
 
 def find_homography(kp1, kp2, matches):
-    good_kp1 = [kp1[m.queryIdx].pt for m in matches]
-    good_kp2 = [kp2[m.trainIdx].pt for m in matches]
+    good_kp2 = [kp2[m.queryIdx].pt for m in matches]
+    good_kp1 = [kp1[m.trainIdx].pt for m in matches]
     return cv2.findHomography(np.array(good_kp1), np.array(good_kp2), cv2.RANSAC, 5.0), good_kp1, good_kp2
 
 
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
         # ======= find homography
         # also in SIFT notebook
-        (H, masked), _, _ = find_homography(frame_kp, template_kp, good_matches)
+        (H, masked), _, _ = find_homography(template_kp, frame_kp, good_matches)
 
         # +++++++ do warping of another image on template image
         # we saw this in SIFT notebook
