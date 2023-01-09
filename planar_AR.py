@@ -44,16 +44,17 @@ if __name__ == '__main__':
     capture = cv2.VideoCapture(ORIGINAL_VIDEO_PATH)
 
     fps = int(capture.get(cv2.CAP_PROP_FPS))
-    frame_height = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     num_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))    
     codec = cv2.VideoWriter_fourcc(*"mp4v")
     color = True
     plot_delay = 1000 // fps
 
-    writer = cv2.VideoWriter(RENDERED_VIDEO_PATH, codec, fps, (frame_width, frame_height), color)
+    # we rotate the dimensions
+    writer = cv2.VideoWriter(RENDERED_VIDEO_PATH, codec, fps, (frame_height, frame_width), color)
 
-    mesh = MeshRenderer(K, frame_width, frame_height, OBJECT_PATH)
+    renderer = MeshRenderer(K, frame_width, frame_height, OBJECT_PATH)
 
     print(f'Processing {num_frames} frames of size {frame_width}x{frame_height}, {num_frames / fps:.2f} seconds, {fps} f/s')
 
@@ -71,17 +72,17 @@ if __name__ == '__main__':
 
         # ======= find homography
         # also in SIFT notebook
-        (H, masked), good_frame_kp, good_template_kp = find_homography(frame_kp, template_kp, good_matches)
+        (H, masked), good_template_kp, good_frame_kp = find_homography(template_kp, frame_kp, good_matches)
 
         # +++++++ take subset of keypoints that obey homography (both frame and reference)
         # this is at most 3 lines- 2 of which are really the same
         # HINT: the function from above should give you this almost completely
-        transformed_points = cv2.perspectiveTransform(np.array([good_frame_kp]), H)[0]
+        transformed_points = cv2.perspectiveTransform(np.array([good_template_kp]), H)[0]
         best_keypoints = [(good_frame_kp[i], good_template_kp[i])
-                          for i, (t_coord, f_coord) in enumerate(zip(good_template_kp, transformed_points))
-                          if np.linalg.norm(t_coord - f_coord) < 10]
+                          for i, (f_coord, t_coord) in enumerate(zip(good_frame_kp, transformed_points))
+                          if np.linalg.norm(f_coord - t_coord) < 10]
         frame_points, template_points = zip(*best_keypoints)
-        frame_points, template_points = np.array(frame_points), np.array(template_points)
+        frame_points, template_points = np.array(frame_points), np.array(template_points)        
 
         # +++++++ solve PnP to get cam pose (r_vec and t_vec)
         # `cv2.solvePnP` is a function that receives:
@@ -103,11 +104,11 @@ if __name__ == '__main__':
 
         # +++++++ draw cube with r_vec and t_vec on top of rgb frame
         # We saw how to draw cubes in camera calibration. (copy and paste)
-        ''' rendered_rgb = draw_cube(frame_rgb, r_vec, t_vec, K, dist_coeffs) '''
+        rendered_rgb = draw_cube(frame_rgb, r_vec, t_vec, K, dist_coeffs)
 
         # +++++++ draw object with r_vec and t_vec on top of rgb frame
-        # after this works you can replace this with the draw function from the renderer class renderer.draw() (1 line)
-        rendered_rgb = mesh.draw(frame_rgb, r_vec, t_vec)
+        # After drawing the cube works you can replace this with the draw function from the renderer class renderer.draw() (1 line)
+        #rendered_rgb = renderer.draw(frame_rgb, r_vec, t_vec)
 
         # ======= plot and save frame
         rendered = cv2.cvtColor(rendered_rgb, cv2.COLOR_RGB2BGR)

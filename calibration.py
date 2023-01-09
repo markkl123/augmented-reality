@@ -11,7 +11,6 @@ from perspective_warping import plot_image
 CAMERA_MATRIX_KEY = 'K'
 DISTORTION_COEFFICIENTS_KEY = 'dist_coeffs'
 CALIB_PARAMETERS_PATH = 'calibration_parameters.json'
-SQUARE_SIZE = 2.2
 
 
 # ======= helper functions
@@ -32,6 +31,7 @@ def extract_chessboard_frames():
 
 def find_corner_points(chessboard_frames):
     PATTERN_SIZE = (7, 7)  # According to number of internal corners - our board is 8x8 square-wise
+    SQUARE_SIZE = 2.2
 
     pattern_points = np.zeros((np.prod(PATTERN_SIZE), 3), np.float32)
     pattern_points[:, :2] = np.indices(PATTERN_SIZE).T.reshape(-1, 2)
@@ -100,7 +100,8 @@ def find_calibration_parameters():
         json.dump(json.dumps(parameters), f)
 
     # ======= check calibration
-    plot_image(draw_cube(chessboard_frames[0], _rvecs[0], _tvecs[0], camera_matrix, dist_coefs))
+    rgb = cv2.cvtColor(chessboard_frames[0], cv2.COLOR_BGR2RGB)
+    plot_image(draw_cube(rgb, _rvecs[0], _tvecs[0], camera_matrix, dist_coefs))
 
 
 if __name__ == '__main__':

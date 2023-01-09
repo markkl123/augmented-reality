@@ -25,10 +25,10 @@ def find_matches(desc1, desc2):
     return np.asarray(good_and_second_good_match_list)[:, 0]
 
 
-def find_homography(kp1, kp2, matches):
-    good_kp2 = [kp2[m.queryIdx].pt for m in matches]
-    good_kp1 = [kp1[m.trainIdx].pt for m in matches]
-    return cv2.findHomography(np.array(good_kp1), np.array(good_kp2), cv2.RANSAC, 5.0), good_kp1, good_kp2
+def find_homography(kp_from, kp_to, matches):
+    good_kp_from = np.array([kp_from[m.trainIdx].pt for m in matches])
+    good_kp_to = np.array([kp_to[m.queryIdx].pt for m in matches])
+    return cv2.findHomography(good_kp_from, good_kp_to, cv2.RANSAC, 5.0), good_kp_from, good_kp_to
 
 
 def warp_images(back, front, H):
@@ -63,7 +63,8 @@ if __name__ == '__main__':
     color = True
     plot_delay = 1000 // fps
 
-    writer = cv2.VideoWriter(WARPED_VIDEO_PATH, codec, fps, (frame_width, frame_height), color)
+    # we rotate the dimensions
+    writer = cv2.VideoWriter(WARPED_VIDEO_PATH, codec, fps, (frame_height, frame_width), color)
 
     print(f'Processing {num_frames} frames of size {frame_width}x{frame_height}, {num_frames / fps:.2f} seconds, {fps} f/s')
 
@@ -71,6 +72,10 @@ if __name__ == '__main__':
     for i in range(num_frames):
 
         frame = capture.read()[1]
+        frame = np.flip(np.transpose(frame, (1, 0, 2)), axis=1)
+
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        template_rgb = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
 
         # ======= find key points matches of frame and template
         # we saw this in the SIFT notebook
