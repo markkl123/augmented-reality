@@ -69,7 +69,7 @@ class MeshRenderer:
 
         # ====== Render the scene
         color, depth = self.r.render(self.scene, flags=self.flag)
-        img[color[:, :, 3] != 0] = color[:, :, 0:3][color[:, :, 3] != 0]
+        img[color[:, :, 3] != 0] = color[:, :, [2,1,0]][color[:, :, 3] != 0]
         return img
 
     @staticmethod

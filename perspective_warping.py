@@ -21,8 +21,7 @@ def extract_keypoints_and_descriptors(image):
 def find_matches(desc1, desc2):
     bf = cv2.BFMatcher()
     matches = bf.knnMatch(desc1, desc2, k=2)
-    good_and_second_good_match_list = [m for m in matches if m[0].distance/m[1].distance < 1]
-    return np.asarray(good_and_second_good_match_list)[:, 0]
+    return np.asarray([m for m in matches if m[0].distance/m[1].distance < 1])[:, 0]
 
 
 def find_homography(kp_from, kp_to, matches):
@@ -43,6 +42,7 @@ ORIGINAL_VIDEO_PATH = r'Videos\original.mp4'
 WARPED_VIDEO_PATH = r'Videos\warped.mp4'
 TEMPLATE_IMAGE_PATH = r'Images\louvre.png'
 ANOTHER_IMAGE_PATH = r'Images\dog.png'
+OUTPUT_VIDEO_SHAPE = (1920, 1080)
 
 
 if __name__ == '__main__':
@@ -63,19 +63,15 @@ if __name__ == '__main__':
     color = True
     plot_delay = 1000 // fps
 
-    # we rotate the dimensions
-    writer = cv2.VideoWriter(WARPED_VIDEO_PATH, codec, fps, (frame_height, frame_width), color)
+    writer = cv2.VideoWriter(WARPED_VIDEO_PATH, codec, fps, OUTPUT_VIDEO_SHAPE, color)
 
     print(f'Processing {num_frames} frames of size {frame_width}x{frame_height}, {num_frames / fps:.2f} seconds, {fps} f/s')
 
     # ======= run on all frames
-    for i in range(num_frames):
+    for _ in range(num_frames):
 
         frame = capture.read()[1]
-        frame = np.flip(np.transpose(frame, (1, 0, 2)), axis=1)
-
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        template_rgb = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, OUTPUT_VIDEO_SHAPE)
 
         # ======= find key points matches of frame and template
         # we saw this in the SIFT notebook
@@ -94,9 +90,6 @@ if __name__ == '__main__':
 
         # ======= plot and save frame 
         writer.write(warped)
-
-        if i % 100 == 0:
-            print(f'{i}/{num_frames}')
 
     # ======= end all
     capture.release()

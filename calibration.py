@@ -4,7 +4,7 @@ import numpy as np
 import json
 import math
 
-from perspective_warping import plot_image
+from perspective_warping import *
 
 
 # ======= contants
@@ -23,7 +23,7 @@ def extract_chessboard_frames():
     capture = cv2.VideoCapture(CHESSBOARD_VIDEO_PATH)
 
     num_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    frames = np.array([capture.read()[1] for _ in range(num_frames)])
+    frames = np.array([cv2.resize(capture.read()[1], OUTPUT_VIDEO_SHAPE) for _ in range(num_frames)])
     capture.release()
 
     return frames[np.arange(num_frames, step=math.ceil(num_frames / CHESSBOARD_NUM_FRAMES))]
